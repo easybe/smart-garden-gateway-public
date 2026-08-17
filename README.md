@@ -41,6 +41,12 @@ scripts/bbwrapper.sh mt7688 gardena-image-foss-bnw linux-yocto-tiny
 scripts/bbwrapper.sh at91sam gardena-image-foss-bnw linux-yocto-tiny
 ```
 
+### QEMU (no gateway hardware)
+
+```
+scripts/bbwrapper.sh qemuarm gardena-image-foss-bnw linux-yocto-tiny
+```
+
 ## Repository Layout
 
 * ```/``` Top level project.
@@ -52,6 +58,33 @@ scripts/bbwrapper.sh at91sam gardena-image-foss-bnw linux-yocto-tiny
     * ```/yocto/meta-readonly-rootfs-overlay``` – Writable rootfs overlay on top of a read-only rootfs
     * ```/yocto/meta-swupdate``` – Update mechanism software
     * ```/yocto/openembedded-core``` – OpenEmbedded core layer
+
+# Running the Software in QEMU
+
+The machine `gardena-sg-qemuarm` runs the gateway software on an emulated ARM926EJ-S (VersatilePB), the same CPU the
+article number 19000 gateway uses. Target packages are therefore binary compatible between the two.
+
+Build the image as described above, then start it:
+```
+scripts/runqemu.sh
+```
+
+The emulated gateway is reached through user mode networking, so no privileges are needed on the host:
+```
+ssh -p 2222 root@localhost
+```
+
+QEMU is left with `Ctrl-A x`.
+
+The following parts of the gateway have no counterpart in QEMU and do not work there:
+
+* The radio module, and with it everything that talks to GARDENA devices
+* WLAN, both as an access point and as a client, hence also the WiFi provisioning
+* The status LEDs and the reset button
+* U-Boot and the flash storage. The kernel is booted directly and the root file system is a writable ext4 image on a
+  virtio disk, instead of a read-only SquashFS in UBI with a writable overlay. As a consequence, SWUpdate cannot
+  install updates, and `fw_printenv`/`fw_setenv` operate on `/etc/fw_env.bin` rather than on the U-Boot environment in
+  flash.
 
 # Getting access
 
