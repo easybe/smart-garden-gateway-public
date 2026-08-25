@@ -1,0 +1,7 @@
+{
+  "name": "smart-garden-gateway",
+  "image": "ghcr.io/easybe/smart-garden-gateway-public/devcontainer:latest",
+  "postCreateCommand": "git submodule update --init",
+  "postStartCommand": "mkdir -p ~/.cache/yocto && wget -O - https://pub.easyb.ch/sstate-cache.tar.gz | tar -C ~/.cache/yocto -xz",
+  "remoteUser": "user"
+}
