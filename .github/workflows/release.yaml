@@ -23,8 +23,7 @@ jobs:
             const branch = process.env.GITHUB_HEAD_REF
             const match = branch.match(/^gardena\/release\/(v\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/)
             if (!match) {
-              core.warning(`No release tag created, ${branch} does not contain a valid version`)
-              return ''
+              throw new Error(`${branch} does not contain a valid version`)
             }
             const tag = 'gardena/' + match[1]
             await github.rest.git.createRef({
@@ -38,7 +37,6 @@ jobs:
   # Creating a tag with GITHUB_TOKEN does not trigger a build, so call the workflow here for the tag
   build:
     needs: release
-    if: needs.release.outputs.tag != ''
     permissions:
       contents: read
       packages: write
