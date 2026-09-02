@@ -81,3 +81,4 @@ if git diff --quiet; then
 fi
 
 git commit -eF "${body_file}" .
+true
