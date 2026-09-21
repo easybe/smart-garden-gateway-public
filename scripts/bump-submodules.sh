@@ -97,3 +97,4 @@ if [ -n "$(ls -A "${body_dir}")" ]; then
 fi
 
 git commit -eF "${body_file}" .
+true
