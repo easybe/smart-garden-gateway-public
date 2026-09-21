@@ -29,149 +29,149 @@ on:
         default: true
 
 jobs:
-  setup:
-    runs-on: ubuntu-24.04
-    outputs:
-      runner: ${{ steps.check.outputs.runner }}
-      container: ${{ steps.check.outputs.container }}
-    steps:
-      - id: check
-        run: |
-          hosted=false
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.runner }}" = "hosted" ] ||
-             [ "${{ github.event_name }}" = "pull_request" ] || [ "${{ github.event.repository.fork }}" = "true" ]
-          then
-            hosted=true
-          fi
+  # setup:
+  #   runs-on: ubuntu-24.04
+  #   outputs:
+  #     runner: ${{ steps.check.outputs.runner }}
+  #     container: ${{ steps.check.outputs.container }}
+  #   steps:
+  #     - id: check
+  #       run: |
+  #         hosted=false
+  #         if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.runner }}" = "hosted" ] ||
+  #            [ "${{ github.event_name }}" = "pull_request" ] || [ "${{ github.event.repository.fork }}" = "true" ]
+  #         then
+  #           hosted=true
+  #         fi
 
-          if [ "$hosted" = "true" ]; then
-            echo 'runner=["ubuntu-24.04"]' >> "$GITHUB_OUTPUT"
-            echo "container=ghcr.io/husqvarnagroup/smart-garden-gateway-public/ci:latest" >> "$GITHUB_OUTPUT"
-          else
-            echo 'runner=["self-hosted", "Linux"]' >> "$GITHUB_OUTPUT"
-            echo "container=" >> "$GITHUB_OUTPUT"
-          fi
+  #         if [ "$hosted" = "true" ]; then
+  #           echo 'runner=["ubuntu-24.04"]' >> "$GITHUB_OUTPUT"
+  #           echo "container=ghcr.io/husqvarnagroup/smart-garden-gateway-public/ci:latest" >> "$GITHUB_OUTPUT"
+  #         else
+  #           echo 'runner=["self-hosted", "Linux"]' >> "$GITHUB_OUTPUT"
+  #           echo "container=" >> "$GITHUB_OUTPUT"
+  #         fi
 
-  build:
-    needs: setup
-    runs-on: ${{ fromJSON(needs.setup.outputs.runner) }}
-    container: ${{ needs.setup.outputs.container }}
+  # build:
+  #   needs: setup
+  #   runs-on: ${{ fromJSON(needs.setup.outputs.runner) }}
+  #   container: ${{ needs.setup.outputs.container }}
 
-    strategy:
-      matrix:
-        machine: ["mt7688", "at91sam"]
+  #   strategy:
+  #     matrix:
+  #       machine: ["mt7688", "at91sam"]
 
-    steps:
-      - name: Checkout code including full history and submodules
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ inputs.ref }}
-          submodules: true
-          fetch-depth: 0
+  #   steps:
+  #     - name: Checkout code including full history and submodules
+  #       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+  #       with:
+  #         ref: ${{ inputs.ref }}
+  #         submodules: true
+  #         fetch-depth: 0
 
-      - name: Install Yocto dependencies
-        if: job.container.id == ''
-        run: |
-          sudo apt update && sudo apt -qy --no-install-recommends install \
-            build-essential \
-            chrpath \
-            cpio \
-            debianutils \
-            diffstat \
-            file \
-            gawk \
-            gcc \
-            git \
-            iputils-ping \
-            libacl1 \
-            liblz4-tool \
-            locales \
-            python3 \
-            python3-git \
-            python3-jinja2 \
-            python3-pexpect \
-            python3-pip \
-            python3-subunit \
-            socat \
-            texinfo \
-            unzip \
-            wget \
-            xz-utils \
-            zstd \
-            ;
+  #     - name: Install Yocto dependencies
+  #       if: job.container.id == ''
+  #       run: |
+  #         sudo apt update && sudo apt -qy --no-install-recommends install \
+  #           build-essential \
+  #           chrpath \
+  #           cpio \
+  #           debianutils \
+  #           diffstat \
+  #           file \
+  #           gawk \
+  #           gcc \
+  #           git \
+  #           iputils-ping \
+  #           libacl1 \
+  #           liblz4-tool \
+  #           locales \
+  #           python3 \
+  #           python3-git \
+  #           python3-jinja2 \
+  #           python3-pexpect \
+  #           python3-pip \
+  #           python3-subunit \
+  #           socat \
+  #           texinfo \
+  #           unzip \
+  #           wget \
+  #           xz-utils \
+  #           zstd \
+  #           ;
 
-      - name: Generate locales
-        if: job.container.id == ''
-        run: sudo locale-gen en_US.UTF-8
+  #     - name: Generate locales
+  #       if: job.container.id == ''
+  #       run: sudo locale-gen en_US.UTF-8
 
-      - name: Build Open Source components
-        run: |
-          if [ "${{ github.event.inputs.sstate-cache }}" = "false" ]; then
-            unset SSTATE_MIRRORS
-          fi
-          scripts/bbwrapper.sh ${{ matrix.machine }} gardena-image-foss-bnw linux-yocto-tiny u-boot
-          scripts/bbwrapper.sh ${{ matrix.machine }} package-index
+  #     - name: Build Open Source components
+  #       run: |
+  #         if [ "${{ github.event.inputs.sstate-cache }}" = "false" ]; then
+  #           unset SSTATE_MIRRORS
+  #         fi
+  #         scripts/bbwrapper.sh ${{ matrix.machine }} gardena-image-foss-bnw linux-yocto-tiny u-boot
+  #         scripts/bbwrapper.sh ${{ matrix.machine }} package-index
 
-      # Tar because some file names contain colons and some differ only in case
-      - name: Pack artifacts
-        run: tar -cf build-artifacts-${{ matrix.machine }}.tar -C build-${{ matrix.machine }}/tmp deploy
+  #     # Tar because some file names contain colons and some differ only in case
+  #     - name: Pack artifacts
+  #       run: tar -cf build-artifacts-${{ matrix.machine }}.tar -C build-${{ matrix.machine }}/tmp deploy
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: build-artifacts-${{ matrix.machine }}
-          path: build-artifacts-${{ matrix.machine }}.tar
-          # Mostly already compressed images and packages
-          compression-level: 1
+  #     - name: Upload artifacts
+  #       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+  #       with:
+  #         name: build-artifacts-${{ matrix.machine }}
+  #         path: build-artifacts-${{ matrix.machine }}.tar
+  #         # Mostly already compressed images and packages
+  #         compression-level: 1
 
-      # Tar because sstate file names contain colons
-      - name: Pack sstate cache
-        if: >-
-          github.ref_type == 'tag'
-          || github.ref_name == 'main'
-        run: tar -cf sstate-cache-${{ matrix.machine }}.tar -C ~/.cache/yocto sstate-cache
+  #     # Tar because sstate file names contain colons
+  #     - name: Pack sstate cache
+  #       if: >-
+  #         github.ref_type == 'tag'
+  #         || github.ref_name == 'main'
+  #       run: tar -cf sstate-cache-${{ matrix.machine }}.tar -C ~/.cache/yocto sstate-cache
 
-      - name: Upload sstate cache
-        if: >-
-          github.ref_type == 'tag'
-          || github.ref_name == 'main'
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: sstate-cache-${{ matrix.machine }}
-          path: sstate-cache-${{ matrix.machine }}.tar
-          # Cache is already Zstandard compressed
-          compression-level: 0
+  #     - name: Upload sstate cache
+  #       if: >-
+  #         github.ref_type == 'tag'
+  #         || github.ref_name == 'main'
+  #       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+  #       with:
+  #         name: sstate-cache-${{ matrix.machine }}
+  #         path: sstate-cache-${{ matrix.machine }}.tar
+  #         # Cache is already Zstandard compressed
+  #         compression-level: 0
 
-      - name: Generate dependency graph for debugging
-        if: failure()
-        run: scripts/bbwrapper.sh ${{ matrix.machine }} -g gardena-image-foss-bnw || true
+  #     - name: Generate dependency graph for debugging
+  #       if: failure()
+  #       run: scripts/bbwrapper.sh ${{ matrix.machine }} -g gardena-image-foss-bnw || true
 
-      # Filter files to prevent "ELOOP: too many symbolic links encountered"
-      - name: Pack files for debugging build
-        if: failure()
-        run: |
-          : > debug-files-${{ matrix.machine }}
-          if [ -e build-${{ matrix.machine }}/task-depends.dot ]; then
-            printf '%s\0' build-${{ matrix.machine }}/task-depends.dot \
-                >> debug-files-${{ matrix.machine }}
-          fi
-          find build-${{ matrix.machine }}/tmp/work -type f -path '*/temp/log.*' \
-              -print0 >> debug-files-${{ matrix.machine }}
-          tar -cf build-debug-${{ matrix.machine }}.tar --null \
-              -T debug-files-${{ matrix.machine }}
+  #     # Filter files to prevent "ELOOP: too many symbolic links encountered"
+  #     - name: Pack files for debugging build
+  #       if: failure()
+  #       run: |
+  #         : > debug-files-${{ matrix.machine }}
+  #         if [ -e build-${{ matrix.machine }}/task-depends.dot ]; then
+  #           printf '%s\0' build-${{ matrix.machine }}/task-depends.dot \
+  #               >> debug-files-${{ matrix.machine }}
+  #         fi
+  #         find build-${{ matrix.machine }}/tmp/work -type f -path '*/temp/log.*' \
+  #             -print0 >> debug-files-${{ matrix.machine }}
+  #         tar -cf build-debug-${{ matrix.machine }}.tar --null \
+  #             -T debug-files-${{ matrix.machine }}
 
-      - name: Upload files for debugging build
-        if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: build-debug-${{ matrix.machine }}
-          path: build-debug-${{ matrix.machine }}.tar
+  #     - name: Upload files for debugging build
+  #       if: failure()
+  #       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+  #       with:
+  #         name: build-debug-${{ matrix.machine }}
+  #         path: build-debug-${{ matrix.machine }}.tar
 
   docker:
-    needs: build
-    if: >-
-      github.ref_type == 'tag'
-      || github.ref_name == 'main'
+    # needs: build
+    # if: >-
+    #   github.ref_type == 'tag'
+    #   || github.ref_name == 'main'
     runs-on: ubuntu-24.04
 
     permissions:
@@ -187,29 +187,30 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
 
-      - name: Download sstate cache artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          pattern: sstate-cache-*
-          path: sstate-artifacts
-          merge-multiple: true
+      # - name: Download sstate cache artifacts
+      #   uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      #   with:
+      #     pattern: sstate-cache-*
+      #     path: sstate-artifacts
+      #     merge-multiple: true
 
-      - name: Add sstate caches to build context
-        run: |
-          for archive in sstate-artifacts/*.tar; do
-            tar -xf "${archive}" -C docker
-          done
+      # - name: Add sstate caches to build context
+      #   run: |
+      #     for archive in sstate-artifacts/*.tar; do
+      #       tar -xf "${archive}" -C docker
+      #     done
 
-      - name: Log into container registry
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      # - name: Log into container registry
+      #   uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+      #   with:
+      #     registry: ghcr.io
+      #     username: ${{ github.actor }}
+      #     password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Compose dev image tags
         id: tags_dev
         run: |
+          set -x
           {
             echo 'tags<<END_OF_TAGS'
             echo "${DEV_IMAGE_NAME}:latest"
@@ -219,33 +220,33 @@ jobs:
             echo END_OF_TAGS
           } >>"${GITHUB_OUTPUT}"
 
-      - name: Build and push dev image
-        id: dev-image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        with:
-          context: docker
-          file: docker/dev.dockerfile
-          push: true
-          tags: ${{ steps.tags_dev.outputs.tags }}
+      # - name: Build and push dev image
+      #   id: dev-image
+      #   uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+      #   with:
+      #     context: docker
+      #     file: docker/dev.dockerfile
+      #     push: true
+      #     tags: ${{ steps.tags_dev.outputs.tags }}
 
-      - name: Compose CI image tags
-        id: tags_ci
-        run: |
-          {
-            echo 'tags<<END_OF_TAGS'
-            echo "${CI_IMAGE_NAME}:latest"
-            if [ "${GITHUB_REF_TYPE}" = tag ]; then
-              echo "${CI_IMAGE_NAME}:${GITHUB_REF_NAME#gardena/}"
-            fi
-            echo END_OF_TAGS
-          } >>"${GITHUB_OUTPUT}"
+      # - name: Compose CI image tags
+      #   id: tags_ci
+      #   run: |
+      #     {
+      #       echo 'tags<<END_OF_TAGS'
+      #       echo "${CI_IMAGE_NAME}:latest"
+      #       if [ "${GITHUB_REF_TYPE}" = tag ]; then
+      #         echo "${CI_IMAGE_NAME}:${GITHUB_REF_NAME#gardena/}"
+      #       fi
+      #       echo END_OF_TAGS
+      #     } >>"${GITHUB_OUTPUT}"
 
-      - name: Build and push CI image
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
-        with:
-          context: docker
-          file: docker/ci.dockerfile
-          push: true
-          tags: ${{ steps.tags_ci.outputs.tags }}
-          build-args: |
-            BASE_IMAGE=${{ env.DEV_IMAGE_NAME }}@${{ steps.dev-image.outputs.digest }}
+      # - name: Build and push CI image
+      #   uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+      #   with:
+      #     context: docker
+      #     file: docker/ci.dockerfile
+      #     push: true
+      #     tags: ${{ steps.tags_ci.outputs.tags }}
+      #     build-args: |
+      #       BASE_IMAGE=${{ env.DEV_IMAGE_NAME }}@${{ steps.dev-image.outputs.digest }}
